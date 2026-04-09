@@ -66,7 +66,7 @@ curl -X POST http://localhost:8000/recommend \
 
 3. **k-NN Matching**: Using cosine similarity, the engine finds books closest to your taste profile, excluding ones you've already rated.
 
-4. **Seed Data**: The engine ships with 15 well-known books and pre-computed feature vectors. No external APIs required.
+4. **Seed Data**: The engine ships with 15 well-known books and pre-computed feature vectors. That can be used to test the system.
 
 ## Architecture
 

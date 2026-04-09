@@ -14,8 +14,6 @@
   --accent-light: #e0e7ff;
   --accent-dark: #3730a3;
   --border: #e5e5ea;
-  --star: #f5c518;
-  --star-empty: #d1d1d6;
   --radius: 12px;
   --radius-sm: 8px;
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -162,18 +160,16 @@ main {
   line-height: 1.3;
 }
 
-.book-card-rating {
+.book-card-like {
   flex-shrink: 0;
-  display: flex;
-  gap: 2px;
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--accent);
+  opacity: 0;
+  transition: var(--transition);
 }
 
-.mini-star {
-  font-size: 0.85rem;
-  color: var(--star-empty);
-}
-
-.mini-star.filled { color: var(--star); }
+.book-card.rated .book-card-like { opacity: 1; }
 
 .book-card-desc {
   font-size: 0.85rem;
@@ -198,6 +194,8 @@ main {
 }
 
 .book-card.rated .book-card-badge { display: block; }
+.book-card.rated .book-card-badge::after { content: "Liked"; }
+.book-card:not(.rated) .book-card-badge::after { content: "New"; }
 
 /* --- Taste Tab --- */
 .taste-layout {
@@ -245,13 +243,6 @@ main {
 .rated-item-title {
   font-size: 0.9rem;
   font-weight: 500;
-}
-
-.rated-item-stars {
-  display: flex;
-  gap: 2px;
-  color: var(--star);
-  font-size: 0.85rem;
 }
 
 .rated-item-remove {
@@ -465,7 +456,7 @@ main {
   margin: 0 auto;
 }
 
-/* --- Modal --- */
+/* --- Add Book Modal --- */
 .modal {
   position: fixed;
   inset: 0;
@@ -489,7 +480,7 @@ main {
   background: var(--surface);
   border-radius: var(--radius);
   padding: 2rem;
-  max-width: 480px;
+  max-width: 560px;
   width: 90%;
   box-shadow: var(--shadow-lg);
   z-index: 1;
@@ -522,36 +513,6 @@ main {
   color: var(--text-secondary);
   line-height: 1.6;
   margin-bottom: 1.5rem;
-}
-
-.modal-rating {
-  display: flex;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.modal-rating > span {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--text-secondary);
-}
-
-.star-rating { display: flex; gap: 2px; }
-
-.star {
-  font-size: 1.75rem;
-  color: var(--star-empty);
-  cursor: pointer;
-  transition: var(--transition);
-  user-select: none;
-}
-
-.star:hover,
-.star.filled { color: var(--star); }
-
-/* --- Add Book Modal --- */
-.modal-wide {
-  max-width: 560px;
 }
 
 .form-group {

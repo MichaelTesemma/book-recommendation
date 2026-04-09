@@ -4,7 +4,7 @@
 
 // --- State ---
 let allBooks = [];                // Full book list from API
-let ratings = {};                 // { book_id: rating (1-5) }
+let likedBooks = new Set();       // Set of book_ids the user likes
 let tasteChart = null;            // Chart.js radar instance
 let recChart = null;              // Chart.js bar instance
 
@@ -35,7 +35,6 @@ document.addEventListener("DOMContentLoaded", () => {
   loadRatings();
   fetchBooks();
   setupNavigation();
-  setupModal();
   setupAddBookModal();
   setupRecommendations();
 });
@@ -43,15 +42,15 @@ document.addEventListener("DOMContentLoaded", () => {
 // --- Local Storage ---
 function loadRatings() {
   try {
-    const saved = localStorage.getItem("booktaste_ratings");
-    if (saved) ratings = JSON.parse(saved);
+    const saved = localStorage.getItem("booktaste_liked");
+    if (saved) likedBooks = new Set(JSON.parse(saved));
   } catch (_) {
-    ratings = {};
+    likedBooks = new Set();
   }
 }
 
 function saveRatings() {
-  localStorage.setItem("booktaste_ratings", JSON.stringify(ratings));
+  localStorage.setItem("booktaste_liked", JSON.stringify([...likedBooks]));
 }
 
 // --- API ---
@@ -70,17 +69,14 @@ async function fetchBooks() {
 }
 
 async function fetchRecommendations() {
-  const likedBooks = Object.entries(ratings).map(([book_id, rating]) => ({
-    book_id: parseInt(book_id),
-    rating,
-  }));
+  if (likedBooks.size === 0) return [];
 
-  if (likedBooks.length === 0) return [];
+  const likedArr = [...likedBooks].map((id) => ({ book_id: id, rating: 5 }));
 
   const res = await fetch("/recommend", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ liked_books: likedBooks }),
+    body: JSON.stringify({ liked_books: likedArr }),
   });
 
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -110,91 +106,29 @@ function renderLibrary() {
   grid.innerHTML = "";
 
   allBooks.forEach((book) => {
+    const isLiked = likedBooks.has(book.id);
     const card = document.createElement("div");
-    card.className = "book-card" + (ratings[book.id] ? " rated" : "");
+    card.className = "book-card" + (isLiked ? " rated" : "");
     card.innerHTML = `
-      <span class="book-card-badge">Rated ${ratings[book.id] || 0}/5</span>
+      <span class="book-card-badge"></span>
       <div class="book-card-header">
         <h3>${escapeHtml(book.title)}</h3>
-      </div>
-      <div class="book-card-rating">
-        ${[1, 2, 3, 4, 5]
-          .map(
-            (i) =>
-              `<span class="mini-star${ratings[book.id] && i <= ratings[book.id] ? " filled" : ""}">★</span>`
-          )
-          .join("")}
+        <span class="book-card-like">${isLiked ? "✓" : ""}</span>
       </div>
       <p class="book-card-desc">${escapeHtml(book.description)}</p>
     `;
-    card.addEventListener("click", () => openModal(book));
+    card.addEventListener("click", () => toggleLike(book.id));
     grid.appendChild(card);
   });
 }
 
-// --- Modal ---
-function setupModal() {
-  const modal = document.getElementById("modal");
-  const close = document.getElementById("modal-close");
-  const backdrop = document.getElementById("modal-backdrop");
-
-  close.addEventListener("click", closeModal);
-  backdrop.addEventListener("click", closeModal);
-  document.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") closeModal();
-  });
-
-  document.querySelectorAll("#modal-stars .star").forEach((star) => {
-    star.addEventListener("click", () => {
-      const value = parseInt(star.dataset.value);
-      rateBook(value);
-    });
-  });
-}
-
-let currentModalBook = null;
-
-function openModal(book) {
-  currentModalBook = book;
-  const modal = document.getElementById("modal");
-  document.getElementById("modal-title").textContent = book.title;
-  document.getElementById("modal-desc").textContent = book.description;
-
-  // Update stars
-  const currentRating = ratings[book.id] || 0;
-  document.querySelectorAll("#modal-stars .star").forEach((star) => {
-    const val = parseInt(star.dataset.value);
-    star.classList.toggle("filled", val <= currentRating);
-  });
-
-  modal.classList.remove("hidden");
-}
-
-function closeModal() {
-  document.getElementById("modal").classList.add("hidden");
-  currentModalBook = null;
-}
-
-function rateBook(value) {
-  if (!currentModalBook) return;
-
-  if (ratings[currentModalBook.id] === value) {
-    // Clicking the same rating removes it
-    delete ratings[currentModalBook.id];
+function toggleLike(bookId) {
+  if (likedBooks.has(bookId)) {
+    likedBooks.delete(bookId);
   } else {
-    ratings[currentModalBook.id] = value;
+    likedBooks.add(bookId);
   }
-
   saveRatings();
-
-  // Update modal stars
-  const currentRating = ratings[currentModalBook.id] || 0;
-  document.querySelectorAll("#modal-stars .star").forEach((star) => {
-    const val = parseInt(star.dataset.value);
-    star.classList.toggle("filled", val <= currentRating);
-  });
-
-  // Re-render library
   renderLibrary();
 }
 
@@ -283,11 +217,15 @@ function hideAddModal() {
 
 // --- Taste Tab ---
 function renderTaste() {
-  const ratedEntries = Object.entries(ratings);
   const emptyEl = document.getElementById("taste-empty");
   const listEl = document.getElementById("rated-list");
 
-  if (ratedEntries.length === 0) {
+  // Guard: books not loaded yet
+  if (allBooks.length === 0) {
+    return;
+  }
+
+  if (likedBooks.size === 0) {
     emptyEl.classList.remove("hidden");
     listEl.innerHTML = "";
     if (tasteChart) {
@@ -299,26 +237,15 @@ function renderTaste() {
 
   emptyEl.classList.add("hidden");
 
-  // Build taste vector
-  const ratedBookIds = ratedEntries.map(([id]) => parseInt(id));
-  const ratedBooks = allBooks.filter((b) => ratedBookIds.includes(b.id));
+  const likedArr = [...likedBooks];
+  const likedBooksData = allBooks.filter((b) => likedBooks.has(b.id));
 
-  // Compute weighted average for display
-  let totalWeight = 0;
-  const tasteVector = new Array(DIMENSIONS.length).fill(0);
-
-  // We need to fetch features — approximate from the rated books' features
-  // Since we don't expose features via API, we'll compute taste on the fly
-  // For now, show the rated books list and compute taste from the recommend endpoint
-  listEl.innerHTML = ratedEntries
-    .map(([bookId, rating]) => {
-      const book = allBooks.find((b) => b.id === parseInt(bookId));
-      if (!book) return "";
+  listEl.innerHTML = likedBooksData
+    .map((book) => {
       return `
         <div class="rated-item">
           <span class="rated-item-title">${escapeHtml(book.title)}</span>
-          <span class="rated-item-stars">${"★".repeat(rating)}${"☆".repeat(5 - rating)}</span>
-          <button class="rated-item-remove" data-id="${bookId}" title="Remove">×</button>
+          <button class="rated-item-remove" data-id="${book.id}" title="Remove">×</button>
         </div>
       `;
     })
@@ -326,44 +253,32 @@ function renderTaste() {
 
   listEl.querySelectorAll(".rated-item-remove").forEach((btn) => {
     btn.addEventListener("click", () => {
-      delete ratings[btn.dataset.id];
+      likedBooks.delete(parseInt(btn.dataset.id));
       saveRatings();
       renderLibrary();
       renderTaste();
     });
   });
 
-  // Fetch taste vector from the backend via a lightweight recommend call
   fetchTasteVector();
 }
 
 async function fetchTasteVector() {
-  const likedBooks = Object.entries(ratings).map(([book_id, rating]) => ({
-    book_id: parseInt(book_id),
-    rating,
-  }));
+  if (likedBooks.size === 0) return;
 
-  if (likedBooks.length === 0) return;
+  const likedArr = [...likedBooks].map((id) => ({ book_id: id, rating: 5 }));
 
   try {
-    // We need the actual taste vector — let's get it via a side-channel
-    // Since the API doesn't expose taste directly, we compute it locally
-    // by fetching book features. For simplicity, we'll show a "coming soon"
-    // or derive it from recommendations.
-    //
-    // Better approach: fetch book features from the db via a new endpoint.
-    // For now, render a bar chart of the taste computed from a recommend call.
     const res = await fetch("/taste", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ liked_books: likedBooks }),
+      body: JSON.stringify({ liked_books: likedArr }),
     });
 
     if (res.ok) {
       const data = await res.json();
       renderTasteRadar(data.taste_vector);
     } else {
-      // Fallback: don't render radar
       renderTasteRadar(null);
     }
   } catch (_) {
@@ -434,9 +349,8 @@ function setupRecommendations() {
     const empty = document.getElementById("rec-empty");
     const results = document.getElementById("rec-results");
 
-    const likedCount = Object.keys(ratings).length;
-    if (likedCount === 0) {
-      alert("Rate at least one book in the Library first.");
+    if (likedBooks.size === 0) {
+      alert("Like at least one book in the Library first.");
       return;
     }
 
@@ -464,7 +378,7 @@ function updateRecState() {
   const results = document.getElementById("rec-results");
   const chartSection = document.getElementById("rec-chart-section");
 
-  if (Object.keys(ratings).length === 0) {
+  if (likedBooks.size === 0) {
     empty.classList.remove("hidden");
     results.innerHTML = "";
     chartSection.classList.add("hidden");

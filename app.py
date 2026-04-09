@@ -8,6 +8,7 @@ Usage:
 
 import argparse
 import json
+import logging
 import os
 import sqlite3
 import subprocess
@@ -17,8 +18,10 @@ import numpy as np
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from sklearn.neighbors import NearestNeighbors
+
+logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
 # Paths
@@ -38,6 +41,22 @@ FEATURE_DIMS = [
     "action",
 ]
 
+
+def _validate_features(raw: dict) -> dict[str, float]:
+    """Validate that all 8 dimensions exist and values are clamped to [0,1]."""
+    missing = [d for d in FEATURE_DIMS if d not in raw]
+    if missing:
+        raise ValueError(f"Missing dimensions: {', '.join(missing)}")
+    validated = {}
+    for dim in FEATURE_DIMS:
+        val = raw[dim]
+        if not isinstance(val, (int, float)):
+            raise ValueError(f"{dim} must be a number, got {type(val).__name__}")
+        if val != val:  # NaN check
+            raise ValueError(f"{dim} is NaN")
+        validated[dim] = max(0.0, min(1.0, float(val)))
+    return validated
+
 # ---------------------------------------------------------------------------
 # Database helpers
 # ---------------------------------------------------------------------------
@@ -53,7 +72,7 @@ def create_tables(conn: sqlite3.Connection) -> None:
     """Create the raw books and feature tables if they don't exist."""
     conn.execute("""
         CREATE TABLE IF NOT EXISTS books_raw (
-            id INTEGER PRIMARY KEY,
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
             description TEXT NOT NULL
         )
@@ -163,21 +182,28 @@ class RecommendationModel:
         if not self.is_fitted:
             raise RuntimeError("Model not fitted yet.")
 
-        # Query k-NN (k = all books, then filter)
-        distances, indices = self.model.kneighbors(
-            user_vector.reshape(1, -1), n_neighbors=len(self.book_ids)
-        )
-
+        # Query a bounded batch — re-query if too many are excluded
         results = []
-        for dist, idx in zip(distances[0], indices[0]):
-            book_id = self.book_ids[idx]
-            if book_id in exclude_ids:
-                continue
-            # Cosine distance → similarity score (1 - distance), clamped to [0,1]
-            score = round(max(0.0, 1.0 - dist), 4)
-            results.append({"title": self.book_titles[idx], "score": score})
-            if len(results) >= top_n:
-                break
+        remaining_excludes = set(exclude_ids)
+        offset = 0
+        batch_size = min(top_n * 10, len(self.book_ids))
+
+        while len(results) < top_n and offset < len(self.book_ids):
+            distances, indices = self.model.kneighbors(
+                user_vector.reshape(1, -1),
+                n_neighbors=min(batch_size + len(results), len(self.book_ids)),
+            )
+
+            for dist, idx in zip(distances[0], indices[0]):
+                book_id = self.book_ids[idx]
+                if book_id in remaining_excludes:
+                    continue
+                score = round(max(0.0, 1.0 - dist), 4)
+                results.append({"title": self.book_titles[idx], "score": score})
+                if len(results) >= top_n:
+                    break
+
+            offset += batch_size
 
         return results
 
@@ -224,8 +250,6 @@ def compute_user_taste(
 
 def build_fastapi_app(model: RecommendationModel):
     """Create and return a FastAPI application with routes."""
-    from fastapi import FastAPI, HTTPException
-
     app = FastAPI(title="Book Recommendation Engine")
 
     # --- Serve static files ---
@@ -267,8 +291,8 @@ def build_fastapi_app(model: RecommendationModel):
         taste_vector: list[float]
 
     class AddBookRequest(BaseModel):
-        title: str
-        description: str = ""
+        title: str = Field(..., min_length=1, max_length=500)
+        description: str = Field(default="", max_length=10000)
 
     class UpdateFeaturesRequest(BaseModel):
         features: dict[str, float]
@@ -292,14 +316,12 @@ def build_fastapi_app(model: RecommendationModel):
         """Add a new book with auto-generated features (uniform 0.5 default)."""
         conn = get_db()
         try:
-            # Generate a new ID
-            row = conn.execute("SELECT MAX(id) as mx FROM books_raw").fetchone()
-            new_id = (row["mx"] or 0) + 1
-
-            conn.execute(
-                "INSERT INTO books_raw (id, title, description) VALUES (?, ?, ?)",
-                (new_id, req.title, req.description),
+            cursor = conn.cursor()
+            cursor.execute(
+                "INSERT INTO books_raw (title, description) VALUES (?, ?)",
+                (req.title, req.description),
             )
+            new_id = cursor.lastrowid
 
             # Default features — uniform 0.5 (neutral)
             conn.execute(
@@ -332,15 +354,22 @@ def build_fastapi_app(model: RecommendationModel):
             if not existing:
                 raise HTTPException(status_code=404, detail="Book not found")
 
-            f = req.features
+            # Validate all 8 dimensions are present and in [0,1]
+            try:
+                features = _validate_features(req.features)
+            except ValueError as e:
+                raise HTTPException(status_code=400, detail=str(e))
+
             conn.execute(
                 """UPDATE book_features SET
                    pacing=?, character_depth=?, plot_complexity=?, prose_quality=?,
                    philosophical_depth=?, emotional_intensity=?, humor=?, action=?
                    WHERE book_id=?""",
                 (
-                    f["pacing"], f["character_depth"], f["plot_complexity"], f["prose_quality"],
-                    f["philosophical_depth"], f["emotional_intensity"], f["humor"], f["action"],
+                    features["pacing"], features["character_depth"],
+                    features["plot_complexity"], features["prose_quality"],
+                    features["philosophical_depth"], features["emotional_intensity"],
+                    features["humor"], features["action"],
                     book_id,
                 ),
             )
@@ -443,14 +472,8 @@ def cmd_init() -> None:
 
 def cmd_serve() -> None:
     """Start the FastAPI server."""
-    # Build model in memory before starting uvicorn
-    model = RecommendationModel()
-    conn = get_db()
-    try:
-        model.fit(conn)
-    finally:
-        conn.close()
-
+    # Model is fitted at module import time via _shared_model.
+    # No need to pre-fit here — uvicorn's import handles it.
     print("Starting server on http://localhost:8000")
     print("Dashboard: http://localhost:8000")
     print("Endpoints:")
@@ -513,8 +536,9 @@ if os.path.exists(DB_PATH):
         _shared_model.fit(conn)
         conn.close()
         _app_instance = build_fastapi_app(_shared_model)
-    except Exception:
-        pass  # Will be created lazily on first request
+    except Exception as e:
+        logger.warning("Could not pre-load model at startup: %s", e)
+        logger.warning("App will be created lazily on first request.")
 
 app: FastAPI = None  # type: ignore[assignment]  # overwritten below
 

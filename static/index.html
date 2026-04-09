@@ -31,7 +31,7 @@
       <div class="tab-header">
         <div>
           <h2>Library</h2>
-          <p>Rate books you've read. The more you rate, the better the recommendations.</p>
+          <p>Click books you like. The more you select, the better the recommendations.</p>
         </div>
         <button id="btn-add-book" class="btn-primary">+ Add Book</button>
       </div>
@@ -49,10 +49,10 @@
           <canvas id="taste-radar"></canvas>
         </div>
         <div class="taste-info">
-          <h3>Rated Books</h3>
+          <h3>Liked Books</h3>
           <div id="rated-list" class="rated-list"></div>
           <div id="taste-empty" class="taste-empty">
-            <p>Rate some books in the Library to see your taste profile.</p>
+            <p>Click some books in the Library to see your taste profile.</p>
           </div>
         </div>
       </div>
@@ -61,56 +61,56 @@
         <div class="dimensions-grid">
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">⏱️</span>
+              <span class="dim-icon">🏎️</span>
               <h4>Pacing</h4>
             </div>
             <p class="dim-desc">How fast the story moves. <strong>Low</strong> = slow-burn, meditative. <strong>High</strong> = page-turner, relentless.</p>
           </div>
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">🧠</span>
+              <span class="dim-icon">🎭</span>
               <h4>Character Depth</h4>
             </div>
             <p class="dim-desc">How complex and layered the characters are. <strong>Low</strong> = archetypal, simple. <strong>High</strong> = psychologically rich, contradictory.</p>
           </div>
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">🔀</span>
+              <span class="dim-icon">🧩</span>
               <h4>Plot Complexity</h4>
             </div>
             <p class="dim-desc">How intricate the narrative structure is. <strong>Low</strong> = straightforward. <strong>High</strong> = multi-threaded, layered reveals.</p>
           </div>
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">✍️</span>
+              <span class="dim-icon">🪶</span>
               <h4>Prose Quality</h4>
             </div>
             <p class="dim-desc">The literary craftsmanship of the writing. <strong>Low</strong> = functional, accessible. <strong>High</strong> = lyrical, beautifully crafted.</p>
           </div>
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">💭</span>
+              <span class="dim-icon">🔮</span>
               <h4>Philosophical Depth</h4>
             </div>
             <p class="dim-desc">How thought-provoking the themes are. <strong>Low</strong> = entertaining, light. <strong>High</strong> = existential, challenges assumptions.</p>
           </div>
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">❤️‍🔥</span>
+              <span class="dim-icon">🌊</span>
               <h4>Emotional Intensity</h4>
             </div>
             <p class="dim-desc">How emotionally powerful and moving. <strong>Low</strong> = detached, cool. <strong>High</strong> = gut-wrenching, cathartic.</p>
           </div>
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">😂</span>
+              <span class="dim-icon">🎪</span>
               <h4>Humor</h4>
             </div>
             <p class="dim-desc">How comedic and funny the book is. <strong>Low</strong> = serious, dramatic. <strong>High</strong> = witty, laugh-out-loud.</p>
           </div>
           <div class="dimension-card">
             <div class="dim-header">
-              <span class="dim-icon">💥</span>
+              <span class="dim-icon">⚔️</span>
               <h4>Action</h4>
             </div>
             <p class="dim-desc">How dynamic and event-driven. <strong>Low</strong> = introspective, calm. <strong>High</strong> = explosive, physical.</p>
@@ -123,12 +123,12 @@
     <section id="tab-recommendations" class="tab">
       <div class="tab-header">
         <h2>Recommendations</h2>
-        <p>Books picked for you based on your ratings.</p>
+        <p>Books picked for you based on the books you liked.</p>
         <button id="btn-recommend" class="btn-primary">Generate Recommendations</button>
       </div>
       <div id="rec-loading" class="hidden">Generating recommendations...</div>
       <div id="rec-empty" class="rec-empty">
-        <p>Rate at least one book in the Library to get personalized recommendations.</p>
+        <p>Click at least one book in the Library to get personalized recommendations.</p>
       </div>
       <div id="rec-results" class="rec-results"></div>
       <div id="rec-chart-section" class="rec-chart-section hidden">
@@ -140,30 +140,10 @@
     </section>
   </main>
 
-  <!-- BOOK RATING MODAL -->
-  <div id="modal" class="modal hidden">
-    <div class="modal-backdrop" id="modal-backdrop"></div>
-    <div class="modal-content">
-      <button class="modal-close" id="modal-close">&times;</button>
-      <h2 id="modal-title"></h2>
-      <p id="modal-desc"></p>
-      <div class="modal-rating">
-        <span>Your rating:</span>
-        <div class="star-rating" id="modal-stars">
-          <span class="star" data-value="1">★</span>
-          <span class="star" data-value="2">★</span>
-          <span class="star" data-value="3">★</span>
-          <span class="star" data-value="4">★</span>
-          <span class="star" data-value="5">★</span>
-        </div>
-      </div>
-    </div>
-  </div>
-
   <!-- ADD BOOK MODAL -->
   <div id="add-modal" class="modal hidden">
     <div class="modal-backdrop" id="add-modal-backdrop"></div>
-    <div class="modal-content modal-wide">
+    <div class="modal-content">
       <button class="modal-close" id="add-modal-close">&times;</button>
       <h2>Add a Book</h2>
       <p>Enter a title and description. The book will be added with neutral feature values (0.5 on all dimensions). You can adjust them later.</p>
