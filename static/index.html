@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BookTaste — Recommendation Engine</title>
+  <link rel="stylesheet" href="/static/styles.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <span class="logo-icon">📚</span>
+        <div>
+          <h1>BookTaste</h1>
+          <span class="tagline">Discover books that match your taste</span>
+        </div>
+      </div>
+      <nav>
+        <button class="nav-btn active" data-tab="library">Library</button>
+        <button class="nav-btn" data-tab="taste">Your Taste</button>
+        <button class="nav-btn" data-tab="recommendations">Recommendations</button>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <!-- LIBRARY TAB -->
+    <section id="tab-library" class="tab active">
+      <div class="tab-header">
+        <div>
+          <h2>Library</h2>
+          <p>Rate books you've read. The more you rate, the better the recommendations.</p>
+        </div>
+        <button id="btn-add-book" class="btn-primary">+ Add Book</button>
+      </div>
+      <div id="library-grid" class="book-grid"></div>
+    </section>
+
+    <!-- TASTE TAB -->
+    <section id="tab-taste" class="tab">
+      <div class="tab-header">
+        <h2>Your Taste Profile</h2>
+        <p>Your reading preferences visualized across 8 literary dimensions.</p>
+      </div>
+      <div class="taste-layout">
+        <div class="taste-chart">
+          <canvas id="taste-radar"></canvas>
+        </div>
+        <div class="taste-info">
+          <h3>Rated Books</h3>
+          <div id="rated-list" class="rated-list"></div>
+          <div id="taste-empty" class="taste-empty">
+            <p>Rate some books in the Library to see your taste profile.</p>
+          </div>
+        </div>
+      </div>
+      <div class="dimensions-section">
+        <h3>What Do These Dimensions Mean?</h3>
+        <div class="dimensions-grid">
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">⏱️</span>
+              <h4>Pacing</h4>
+            </div>
+            <p class="dim-desc">How fast the story moves. <strong>Low</strong> = slow-burn, meditative. <strong>High</strong> = page-turner, relentless.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">🧠</span>
+              <h4>Character Depth</h4>
+            </div>
+            <p class="dim-desc">How complex and layered the characters are. <strong>Low</strong> = archetypal, simple. <strong>High</strong> = psychologically rich, contradictory.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">🔀</span>
+              <h4>Plot Complexity</h4>
+            </div>
+            <p class="dim-desc">How intricate the narrative structure is. <strong>Low</strong> = straightforward. <strong>High</strong> = multi-threaded, layered reveals.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">✍️</span>
+              <h4>Prose Quality</h4>
+            </div>
+            <p class="dim-desc">The literary craftsmanship of the writing. <strong>Low</strong> = functional, accessible. <strong>High</strong> = lyrical, beautifully crafted.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">💭</span>
+              <h4>Philosophical Depth</h4>
+            </div>
+            <p class="dim-desc">How thought-provoking the themes are. <strong>Low</strong> = entertaining, light. <strong>High</strong> = existential, challenges assumptions.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">❤️‍🔥</span>
+              <h4>Emotional Intensity</h4>
+            </div>
+            <p class="dim-desc">How emotionally powerful and moving. <strong>Low</strong> = detached, cool. <strong>High</strong> = gut-wrenching, cathartic.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">😂</span>
+              <h4>Humor</h4>
+            </div>
+            <p class="dim-desc">How comedic and funny the book is. <strong>Low</strong> = serious, dramatic. <strong>High</strong> = witty, laugh-out-loud.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">💥</span>
+              <h4>Action</h4>
+            </div>
+            <p class="dim-desc">How dynamic and event-driven. <strong>Low</strong> = introspective, calm. <strong>High</strong> = explosive, physical.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- RECOMMENDATIONS TAB -->
+    <section id="tab-recommendations" class="tab">
+      <div class="tab-header">
+        <h2>Recommendations</h2>
+        <p>Books picked for you based on your ratings.</p>
+        <button id="btn-recommend" class="btn-primary">Generate Recommendations</button>
+      </div>
+      <div id="rec-loading" class="hidden">Generating recommendations...</div>
+      <div id="rec-empty" class="rec-empty">
+        <p>Rate at least one book in the Library to get personalized recommendations.</p>
+      </div>
+      <div id="rec-results" class="rec-results"></div>
+      <div id="rec-chart-section" class="rec-chart-section hidden">
+        <h3>Similarity Scores</h3>
+        <div class="rec-chart-wrap">
+          <canvas id="rec-chart"></canvas>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- BOOK RATING MODAL -->
+  <div id="modal" class="modal hidden">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-content">
+      <button class="modal-close" id="modal-close">&times;</button>
+      <h2 id="modal-title"></h2>
+      <p id="modal-desc"></p>
+      <div class="modal-rating">
+        <span>Your rating:</span>
+        <div class="star-rating" id="modal-stars">
+          <span class="star" data-value="1">★</span>
+          <span class="star" data-value="2">★</span>
+          <span class="star" data-value="3">★</span>
+          <span class="star" data-value="4">★</span>
+          <span class="star" data-value="5">★</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADD BOOK MODAL -->
+  <div id="add-modal" class="modal hidden">
+    <div class="modal-backdrop" id="add-modal-backdrop"></div>
+    <div class="modal-content modal-wide">
+      <button class="modal-close" id="add-modal-close">&times;</button>
+      <h2>Add a Book</h2>
+      <p>Enter a title and description. The book will be added with neutral feature values (0.5 on all dimensions). You can adjust them later.</p>
+      <form id="add-book-form">
+        <div class="form-group">
+          <label for="add-book-title">Title</label>
+          <input type="text" id="add-book-title" placeholder="e.g. The Count of Monte Cristo" required>
+        </div>
+        <div class="form-group">
+          <label for="add-book-desc">Description</label>
+          <textarea id="add-book-desc" rows="4" placeholder="A brief summary of the book..." required></textarea>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn-secondary" id="add-book-cancel">Cancel</button>
+          <button type="submit" class="btn-primary" id="add-book-submit">Add Book</button>
+        </div>
+      </form>
+      <div id="add-book-status" class="hidden"></div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

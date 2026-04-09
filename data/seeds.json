@@ -1,0 +1,227 @@
+[
+  {
+    "id": 1,
+    "title": "The Hitchhiker's Guide to the Galaxy",
+    "description": "Arthur Dent is swept off Earth just before it's destroyed, embarking on a wild intergalactic adventure with his alien friend Ford Prefect. Along the way they encounter absurd bureaucracies, a depressed robot, and the answer to life itself.",
+    "features": {
+      "pacing": 0.8,
+      "character_depth": 0.4,
+      "plot_complexity": 0.5,
+      "prose_quality": 0.7,
+      "philosophical_depth": 0.6,
+      "emotional_intensity": 0.3,
+      "humor": 0.95,
+      "action": 0.6
+    }
+  },
+  {
+    "id": 2,
+    "title": "War and Peace",
+    "description": "Tolstoy's epic novel follows several aristocratic families against the backdrop of the Napoleonic invasion of Russia. It weaves together personal struggles, political intrigue, and philosophical meditation on history and free will.",
+    "features": {
+      "pacing": 0.2,
+      "character_depth": 0.95,
+      "plot_complexity": 0.95,
+      "prose_quality": 0.95,
+      "philosophical_depth": 0.9,
+      "emotional_intensity": 0.7,
+      "humor": 0.15,
+      "action": 0.5
+    }
+  },
+  {
+    "id": 3,
+    "title": "1984",
+    "description": "In a totalitarian future state, Winston Smith struggles to maintain his individuality under the constant surveillance of Big Brother. A chilling exploration of censorship, propaganda, and the corruption of truth.",
+    "features": {
+      "pacing": 0.6,
+      "character_depth": 0.75,
+      "plot_complexity": 0.6,
+      "prose_quality": 0.85,
+      "philosophical_depth": 0.9,
+      "emotional_intensity": 0.8,
+      "humor": 0.05,
+      "action": 0.4
+    }
+  },
+  {
+    "id": 4,
+    "title": "Pride and Prejudice",
+    "description": "Elizabeth Bennet navigates issues of morality, reputation, and marriage in Regency-era England. Her evolving relationship with the proud Mr. Darcy forms the heart of Austen's witty social commentary.",
+    "features": {
+      "pacing": 0.4,
+      "character_depth": 0.85,
+      "plot_complexity": 0.5,
+      "prose_quality": 0.9,
+      "philosophical_depth": 0.5,
+      "emotional_intensity": 0.65,
+      "humor": 0.7,
+      "action": 0.1
+    }
+  },
+  {
+    "id": 5,
+    "title": "Dune",
+    "description": "Paul Atreides navigates political betrayal and ecological transformation on the desert planet Arrakis. His rise from exiled duke to messianic leader reshapes the entire galactic order.",
+    "features": {
+      "pacing": 0.6,
+      "character_depth": 0.7,
+      "plot_complexity": 0.85,
+      "prose_quality": 0.8,
+      "philosophical_depth": 0.75,
+      "emotional_intensity": 0.6,
+      "humor": 0.1,
+      "action": 0.75
+    }
+  },
+  {
+    "id": 6,
+    "title": "The Great Gatsby",
+    "description": "Nick Carraway becomes entangled in the opulent and tragic world of millionaire Jay Gatsby, whose obsessive love for the beautiful Daisy Buchanan exposes the hollowness of the American Dream.",
+    "features": {
+      "pacing": 0.5,
+      "character_depth": 0.7,
+      "plot_complexity": 0.4,
+      "prose_quality": 0.95,
+      "philosophical_depth": 0.65,
+      "emotional_intensity": 0.75,
+      "humor": 0.2,
+      "action": 0.2
+    }
+  },
+  {
+    "id": 7,
+    "title": "Brave New World",
+    "description": "In a future where humans are genetically engineered and pacified by pleasure, John the Savage struggles to find meaning in a world without suffering. Huxley's dystopia questions the cost of a perfectly ordered society.",
+    "features": {
+      "pacing": 0.5,
+      "character_depth": 0.6,
+      "plot_complexity": 0.55,
+      "prose_quality": 0.8,
+      "philosophical_depth": 0.85,
+      "emotional_intensity": 0.6,
+      "humor": 0.25,
+      "action": 0.3
+    }
+  },
+  {
+    "id": 8,
+    "title": "The Lord of the Rings",
+    "description": "Frodo Baggins and a fellowship of diverse companions embark on a perilous quest to destroy a dark ring of power. Tolkien's masterwork blends rich mythology with themes of courage, friendship, and the corrupting nature of power.",
+    "features": {
+      "pacing": 0.5,
+      "character_depth": 0.8,
+      "plot_complexity": 0.9,
+      "prose_quality": 0.9,
+      "philosophical_depth": 0.7,
+      "emotional_intensity": 0.7,
+      "humor": 0.25,
+      "action": 0.85
+    }
+  },
+  {
+    "id": 9,
+    "title": "Catch-22",
+    "description": "Captain Yossarian tries to survive the absurdity of war while trapped in a military bureaucracy where only the insane are fit to fly, but asking to be grounded proves you're sane enough to keep flying.",
+    "features": {
+      "pacing": 0.7,
+      "character_depth": 0.65,
+      "plot_complexity": 0.8,
+      "prose_quality": 0.75,
+      "philosophical_depth": 0.75,
+      "emotional_intensity": 0.5,
+      "humor": 0.9,
+      "action": 0.6
+    }
+  },
+  {
+    "id": 10,
+    "title": "Crime and Punishment",
+    "description": "Raskolnikov, a destitute student in St. Petersburg, commits murder and then wrestles with guilt, morality, and redemption. Dostoevsky's psychological masterpiece probes the depths of human conscience.",
+    "features": {
+      "pacing": 0.4,
+      "character_depth": 0.95,
+      "plot_complexity": 0.7,
+      "prose_quality": 0.9,
+      "philosophical_depth": 0.9,
+      "emotional_intensity": 0.9,
+      "humor": 0.05,
+      "action": 0.3
+    }
+  },
+  {
+    "id": 11,
+    "title": "The Name of the Wind",
+    "description": "Kvothe recounts his transformation from a talented orphan to the most notorious wizard of his age. Rothfuss crafts a lush, lyrical tale of music, magic, and the dangerous pursuit of knowledge.",
+    "features": {
+      "pacing": 0.6,
+      "character_depth": 0.8,
+      "plot_complexity": 0.7,
+      "prose_quality": 0.85,
+      "philosophical_depth": 0.5,
+      "emotional_intensity": 0.7,
+      "humor": 0.3,
+      "action": 0.65
+    }
+  },
+  {
+    "id": 12,
+    "title": "Good Omens",
+    "description": "An angel and a demon team up to prevent the apocalypse, having grown rather fond of the world they were supposed to end. Gaiman and Pratchett deliver a wildly irreverent comedy about the nature of good and evil.",
+    "features": {
+      "pacing": 0.75,
+      "character_depth": 0.55,
+      "plot_complexity": 0.55,
+      "prose_quality": 0.8,
+      "philosophical_depth": 0.55,
+      "emotional_intensity": 0.45,
+      "humor": 0.95,
+      "action": 0.5
+    }
+  },
+  {
+    "id": 13,
+    "title": "Frankenstein",
+    "description": "Victor Frankenstein's obsessive creation of life from dead matter unleashes a creature whose loneliness and rage lead to tragedy. Shelley's gothic novel examines the perils of unchecked ambition and the nature of humanity.",
+    "features": {
+      "pacing": 0.5,
+      "character_depth": 0.75,
+      "plot_complexity": 0.55,
+      "prose_quality": 0.8,
+      "philosophical_depth": 0.8,
+      "emotional_intensity": 0.85,
+      "humor": 0.05,
+      "action": 0.4
+    }
+  },
+  {
+    "id": 14,
+    "title": "The Martian",
+    "description": "Stranded on Mars after a dust storm forces his crew to evacuate, astronaut Mark Watney must use his ingenuity and dark humor to survive on a hostile planet with limited supplies.",
+    "features": {
+      "pacing": 0.85,
+      "character_depth": 0.45,
+      "plot_complexity": 0.6,
+      "prose_quality": 0.6,
+      "philosophical_depth": 0.3,
+      "emotional_intensity": 0.5,
+      "humor": 0.75,
+      "action": 0.8
+    }
+  },
+  {
+    "id": 15,
+    "title": "One Hundred Years of Solitude",
+    "description": "The multi-generational saga of the Buendia family in the fictional Colombian town of Macondo. Marquez blends magical realism with political allegory to create a luminous meditation on time, memory, and the inescapable patterns of history.",
+    "features": {
+      "pacing": 0.35,
+      "character_depth": 0.85,
+      "plot_complexity": 0.9,
+      "prose_quality": 0.95,
+      "philosophical_depth": 0.8,
+      "emotional_intensity": 0.75,
+      "humor": 0.3,
+      "action": 0.35
+    }
+  }
+]
