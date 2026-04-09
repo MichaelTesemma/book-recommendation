@@ -1,0 +1,17 @@
+# Environment & IDE
+.qwen/
+.vscode/
+.idea/
+
+# Project files
+plan.md
+data/seeds.json
+
+# Database
+data/books.db
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.env
