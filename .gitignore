@@ -9,6 +9,7 @@ data/
 build_seeds.py
 collect_data.py
 Prominent-Book-Genres.md
+collected-book-lists.md
 scraper.py
 
 # Database
