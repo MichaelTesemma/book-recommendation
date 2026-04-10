@@ -39,11 +39,16 @@ FEATURE_DIMS = [
     "emotional_intensity",
     "humor",
     "action",
+    "worldbuilding",
+    "ending_satisfaction",
+    "darkness_violence",
+    "romance_presence",
+    "mystery_puzzle",
 ]
 
 
 def _validate_features(raw: dict) -> dict[str, float]:
-    """Validate that all 8 dimensions exist and values are clamped to [0,1]."""
+    """Validate that all 13 dimensions exist and values are clamped to [0,1]."""
     missing = [d for d in FEATURE_DIMS if d not in raw]
     if missing:
         raise ValueError(f"Missing dimensions: {', '.join(missing)}")
@@ -74,7 +79,8 @@ def create_tables(conn: sqlite3.Connection) -> None:
         CREATE TABLE IF NOT EXISTS books_raw (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             title TEXT NOT NULL,
-            description TEXT NOT NULL
+            description TEXT NOT NULL,
+            genre TEXT NOT NULL DEFAULT ''
         )
     """)
     conn.execute("""
@@ -88,36 +94,51 @@ def create_tables(conn: sqlite3.Connection) -> None:
             emotional_intensity REAL,
             humor REAL,
             action REAL,
+            worldbuilding REAL,
+            ending_satisfaction REAL,
+            darkness_violence REAL,
+            romance_presence REAL,
+            mystery_puzzle REAL,
             FOREIGN KEY (book_id) REFERENCES books_raw(id)
         )
     """)
     conn.commit()
 
 
+def drop_all_data(conn: sqlite3.Connection) -> None:
+    """Drop all existing data from both tables."""
+    conn.execute("DELETE FROM book_features")
+    conn.execute("DELETE FROM books_raw")
+    conn.execute("DELETE FROM sqlite_sequence WHERE name IN ('books_raw')")
+    conn.commit()
+    print("All existing data dropped.")
+
+
 def load_seeds(conn: sqlite3.Connection) -> None:
-    """Load seed data from data/seeds.json (idempotent)."""
+    """Load seed data from data/seeds.json (drops all existing data first)."""
+    # First drop everything
+    drop_all_data(conn)
+
     with open(SEEDS_PATH, "r") as f:
         seeds = json.load(f)
 
     for book in seeds:
-        # Skip if already loaded
-        existing = conn.execute(
-            "SELECT id FROM books_raw WHERE id = ?", (book["id"],)
-        ).fetchone()
-        if existing:
-            continue
+        genre = book.get("genre", "")
+        description = book.get("description", "")
 
         conn.execute(
-            "INSERT INTO books_raw (id, title, description) VALUES (?, ?, ?)",
-            (book["id"], book["title"], book["description"]),
+            "INSERT INTO books_raw (id, title, description, genre) VALUES (?, ?, ?, ?)",
+            (book["id"], book["title"], description, genre),
         )
 
         feats = book["features"]
         conn.execute(
             """INSERT INTO book_features (book_id, pacing, character_depth,
                plot_complexity, prose_quality, philosophical_depth,
-               emotional_intensity, humor, action)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               emotional_intensity, humor, action, worldbuilding,
+               ending_satisfaction, darkness_violence, romance_presence,
+               mystery_puzzle)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 book["id"],
                 feats["pacing"],
@@ -128,11 +149,16 @@ def load_seeds(conn: sqlite3.Connection) -> None:
                 feats["emotional_intensity"],
                 feats["humor"],
                 feats["action"],
+                feats["worldbuilding"],
+                feats["ending_satisfaction"],
+                feats["darkness_violence"],
+                feats["romance_presence"],
+                feats["mystery_puzzle"],
             ),
         )
 
     conn.commit()
-    print(f"Seed data loaded. {len(seeds)} books available.")
+    print(f"Seed data loaded: {len(seeds)} books across {len({b.get('genre','') for b in seeds})} genres.")
 
 
 # ---------------------------------------------------------------------------
@@ -176,9 +202,13 @@ class RecommendationModel:
         self,
         user_vector: np.ndarray,
         exclude_ids: set[int],
-        top_n: int = 5,
+        top_n: int = 10,
     ) -> list[dict]:
-        """Return top_n recommendations excluding already-liked books."""
+        """Return top_n recommendations excluding already-liked books.
+
+        Each result includes title, score, book_id, and the book's feature vector
+        so the frontend can explain *why* it was chosen.
+        """
         if not self.is_fitted:
             raise RuntimeError("Model not fitted yet.")
 
@@ -199,7 +229,16 @@ class RecommendationModel:
                 if book_id in remaining_excludes:
                     continue
                 score = round(max(0.0, 1.0 - dist), 4)
-                results.append({"title": self.book_titles[idx], "score": score})
+                book_features = self.model._fit_X[idx].tolist()
+                results.append({
+                    "title": self.book_titles[idx],
+                    "book_id": book_id,
+                    "score": score,
+                    "features": {
+                        FEATURE_DIMS[i]: round(book_features[i], 3)
+                        for i in range(len(FEATURE_DIMS))
+                    },
+                })
                 if len(results) >= top_n:
                     break
 
@@ -273,9 +312,23 @@ def build_fastapi_app(model: RecommendationModel):
     @app.get("/books")
     def list_books():
         conn = get_db()
-        rows = conn.execute("SELECT id, title, description FROM books_raw").fetchall()
+        rows = conn.execute("SELECT id, title, description, genre FROM books_raw").fetchall()
         conn.close()
-        return [{"id": r["id"], "title": r["title"], "description": r["description"]} for r in rows]
+        return [{"id": r["id"], "title": r["title"], "description": r["description"], "genre": r["genre"]} for r in rows]
+
+    @app.get("/search")
+    def search_books(q: str = "", limit: int = 20):
+        """Search books by title or description (case-insensitive)."""
+        conn = get_db()
+        search_term = f"%{q}%"
+        rows = conn.execute(
+            "SELECT id, title, description, genre FROM books_raw "
+            "WHERE title LIKE ? OR description LIKE ? "
+            "LIMIT ?",
+            (search_term, search_term, limit),
+        ).fetchall()
+        conn.close()
+        return [{"id": r["id"], "title": r["title"], "description": r["description"], "genre": r["genre"]} for r in rows]
 
     class LikedBook(BaseModel):
         book_id: int
@@ -323,12 +376,14 @@ def build_fastapi_app(model: RecommendationModel):
             )
             new_id = cursor.lastrowid
 
-            # Default features — uniform 0.5 (neutral)
+            # Default features — uniform 0.5 (neutral) for all 13 dimensions
             conn.execute(
                 """INSERT INTO book_features
                    (book_id, pacing, character_depth, plot_complexity, prose_quality,
-                    philosophical_depth, emotional_intensity, humor, action)
-                   VALUES (?, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)""",
+                    philosophical_depth, emotional_intensity, humor, action,
+                    worldbuilding, ending_satisfaction, darkness_violence,
+                    romance_presence, mystery_puzzle)
+                   VALUES (?, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5)""",
                 (new_id,),
             )
             conn.commit()
@@ -363,13 +418,18 @@ def build_fastapi_app(model: RecommendationModel):
             conn.execute(
                 """UPDATE book_features SET
                    pacing=?, character_depth=?, plot_complexity=?, prose_quality=?,
-                   philosophical_depth=?, emotional_intensity=?, humor=?, action=?
+                   philosophical_depth=?, emotional_intensity=?, humor=?, action=?,
+                   worldbuilding=?, ending_satisfaction=?, darkness_violence=?,
+                   romance_presence=?, mystery_puzzle=?
                    WHERE book_id=?""",
                 (
                     features["pacing"], features["character_depth"],
                     features["plot_complexity"], features["prose_quality"],
                     features["philosophical_depth"], features["emotional_intensity"],
                     features["humor"], features["action"],
+                    features["worldbuilding"], features["ending_satisfaction"],
+                    features["darkness_violence"], features["romance_presence"],
+                    features["mystery_puzzle"],
                     book_id,
                 ),
             )
@@ -393,7 +453,7 @@ def build_fastapi_app(model: RecommendationModel):
         conn = get_db()
         try:
             book = conn.execute(
-                "SELECT id, title, description FROM books_raw WHERE id = ?", (book_id,)
+                "SELECT id, title, description, genre FROM books_raw WHERE id = ?", (book_id,)
             ).fetchone()
             if not book:
                 raise HTTPException(status_code=404, detail="Book not found")
@@ -406,6 +466,7 @@ def build_fastapi_app(model: RecommendationModel):
                 "id": book["id"],
                 "title": book["title"],
                 "description": book["description"],
+                "genre": book["genre"],
                 "features": {dim: feats[dim] for dim in FEATURE_DIMS} if feats else None,
             }
         except HTTPException:
@@ -440,7 +501,7 @@ def build_fastapi_app(model: RecommendationModel):
             exclude_ids = {b.book_id for b in req.liked_books}
 
             # Get recommendations
-            recs = model.recommend(user_vector, exclude_ids, top_n=5)
+            recs = model.recommend(user_vector, exclude_ids, top_n=10)
             return {"recommendations": recs}
         except ValueError as e:
             raise HTTPException(status_code=400, detail=str(e))
@@ -479,6 +540,7 @@ def cmd_serve() -> None:
     print("Endpoints:")
     print("  GET  /health")
     print("  GET  /books")
+    print("  GET  /search?q=query")
     print("  POST /taste")
     print("  POST /recommend")
     subprocess.run(

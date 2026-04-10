@@ -7,6 +7,7 @@ let allBooks = [];                // Full book list from API
 let likedBooks = new Set();       // Set of book_ids the user likes
 let tasteChart = null;            // Chart.js radar instance
 let recChart = null;              // Chart.js bar instance
+let searchTimeout = null;         // Debounce timer for search
 
 const DIMENSIONS = [
   "pacing",
@@ -17,6 +18,11 @@ const DIMENSIONS = [
   "emotional_intensity",
   "humor",
   "action",
+  "worldbuilding",
+  "ending_satisfaction",
+  "darkness_violence",
+  "romance_presence",
+  "mystery_puzzle",
 ];
 
 const DIM_LABELS = {
@@ -28,6 +34,22 @@ const DIM_LABELS = {
   emotional_intensity: "Emotional Intensity",
   humor: "Humor",
   action: "Action",
+  worldbuilding: "Worldbuilding",
+  ending_satisfaction: "Ending Satisfaction",
+  darkness_violence: "Darkness / Violence",
+  romance_presence: "Romance Presence",
+  mystery_puzzle: "Mystery / Puzzle",
+};
+
+const GENRE_META = {
+  "Literary Fiction & Classics": { icon: "📖", color: "#6366f1" },
+  "Fantasy & Science Fiction": { icon: "🧙", color: "#8b5cf6" },
+  "Romance": { icon: "💕", color: "#ec4899" },
+  "Crime, Thriller & Mystery": { icon: "🔍", color: "#f59e0b" },
+  "Young Adult": { icon: "🌟", color: "#10b981" },
+  "Horror": { icon: "👻", color: "#dc2626" },
+  "Non-Fiction": { icon: "📚", color: "#0ea5e9" },
+  "Historical Fiction": { icon: "🏛️", color: "#a855f7" },
 };
 
 // --- Init ---
@@ -37,6 +59,7 @@ document.addEventListener("DOMContentLoaded", () => {
   setupNavigation();
   setupAddBookModal();
   setupRecommendations();
+  setupSearch();
 });
 
 // --- Local Storage ---
@@ -59,7 +82,7 @@ async function fetchBooks() {
     const res = await fetch("/books");
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     allBooks = await res.json();
-    renderLibrary();
+    renderLibrary(allBooks);
     renderTaste();
   } catch (err) {
     console.error("Failed to fetch books:", err);
@@ -94,6 +117,14 @@ function setupNavigation() {
       btn.classList.add("active");
       document.getElementById(`tab-${tab}`).classList.add("active");
 
+      if (tab === "library") {
+        // Clear search when returning to library
+        const searchInput = document.getElementById("book-search");
+        if (searchInput && searchInput.value.trim()) {
+          searchInput.value = "";
+          clearSearch();
+        }
+      }
       if (tab === "taste") renderTaste();
       if (tab === "recommendations") updateRecState();
     });
@@ -101,25 +132,94 @@ function setupNavigation() {
 }
 
 // --- Library ---
-function renderLibrary() {
+function renderLibrary(books) {
   const grid = document.getElementById("library-grid");
   grid.innerHTML = "";
 
+  const displayBooks = books || allBooks;
+
+  if (displayBooks.length === 0) {
+    grid.innerHTML = '<p class="no-results">No books found.</p>';
+    return;
+  }
+
+  // If books is provided (search results), render flat
+  if (books) {
+    grid.className = "book-grid";
+    books.forEach((book) => {
+      const isLiked = likedBooks.has(book.id);
+      const card = createBookCard(book, isLiked);
+      grid.appendChild(card);
+    });
+    return;
+  }
+
+  // Group by genre
+  const byGenre = {};
   allBooks.forEach((book) => {
-    const isLiked = likedBooks.has(book.id);
-    const card = document.createElement("div");
-    card.className = "book-card" + (isLiked ? " rated" : "");
-    card.innerHTML = `
-      <span class="book-card-badge"></span>
-      <div class="book-card-header">
-        <h3>${escapeHtml(book.title)}</h3>
-        <span class="book-card-like">${isLiked ? "✓" : ""}</span>
-      </div>
-      <p class="book-card-desc">${escapeHtml(book.description)}</p>
-    `;
-    card.addEventListener("click", () => toggleLike(book.id));
-    grid.appendChild(card);
+    const g = book.genre || "Other";
+    if (!byGenre[g]) byGenre[g] = [];
+    byGenre[g].push(book);
   });
+
+  // Sort genres: by count descending, then alphabetically
+  const sortedGenres = Object.keys(byGenre).sort((a, b) => {
+    if (byGenre[b].length !== byGenre[a].length) return byGenre[b].length - byGenre[a].length;
+    return a.localeCompare(b);
+  });
+
+  grid.className = "book-grid book-grid-grouped";
+
+  sortedGenres.forEach((genre) => {
+    const meta = GENRE_META[genre] || { icon: "📕", color: "#6e6e73" };
+    const genreSection = document.createElement("div");
+    genreSection.className = "genre-section";
+
+    const genreHeader = document.createElement("div");
+    genreHeader.className = "genre-header";
+    const count = byGenre[genre].length;
+    genreHeader.innerHTML = `
+      <span class="genre-icon">${meta.icon}</span>
+      <h3>${escapeHtml(genre)}</h3>
+      <span class="genre-count">${count} book${count !== 1 ? "s" : ""}</span>
+      <span class="genre-chevron">▾</span>
+    `;
+    genreHeader.style.borderLeftColor = meta.color;
+
+    const genreGrid = document.createElement("div");
+    genreGrid.className = "genre-books-grid";
+
+    byGenre[genre].forEach((book) => {
+      const isLiked = likedBooks.has(book.id);
+      genreGrid.appendChild(createBookCard(book, isLiked));
+    });
+
+    genreSection.appendChild(genreHeader);
+    genreSection.appendChild(genreGrid);
+    grid.appendChild(genreSection);
+
+    // Toggle collapse
+    genreHeader.addEventListener("click", () => {
+      const collapsed = genreSection.classList.toggle("collapsed");
+      genreHeader.querySelector(".genre-chevron").textContent = collapsed ? "▸" : "▾";
+    });
+  });
+}
+
+function createBookCard(book, isLiked) {
+  const card = document.createElement("div");
+  card.className = "book-card" + (isLiked ? " rated" : "");
+  const meta = GENRE_META[book.genre] || { color: "#6e6e73" };
+  card.innerHTML = `
+    <div class="book-card-genre" style="background:${meta.color}20;color:${meta.color}">${escapeHtml(book.genre || "")}</div>
+    <div class="book-card-header">
+      <h3>${escapeHtml(book.title)}</h3>
+      <span class="book-card-like">${isLiked ? "✓" : ""}</span>
+    </div>
+    <p class="book-card-desc">${escapeHtml(book.description || "")}</p>
+  `;
+  card.addEventListener("click", () => toggleLike(book.id));
+  return card;
 }
 
 function toggleLike(bookId) {
@@ -129,7 +229,62 @@ function toggleLike(bookId) {
     likedBooks.add(bookId);
   }
   saveRatings();
-  renderLibrary();
+  renderLibrary(getCurrentDisplayBooks());
+}
+
+// --- Search ---
+function getCurrentDisplayBooks() {
+  const query = document.getElementById("book-search").value.trim();
+  return query ? [] : allBooks;  // if searching, we already rendered results
+}
+
+function setupSearch() {
+  const input = document.getElementById("book-search");
+  if (!input) return;
+
+  input.addEventListener("input", () => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+      const query = input.value.trim();
+      if (query.length === 0) {
+        clearSearch();
+        return;
+      }
+      searchBooks(query);
+    }, 300);
+  });
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      input.value = "";
+      clearSearch();
+    }
+  });
+}
+
+async function searchBooks(query) {
+  const statusEl = document.getElementById("search-status");
+  statusEl.classList.remove("hidden");
+  statusEl.textContent = `Searching for "${query}"...`;
+
+  try {
+    const res = await fetch(`/search?q=${encodeURIComponent(query)}&limit=50`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const results = await res.json();
+
+    statusEl.textContent = `${results.length} result${results.length !== 1 ? "s" : ""} found`;
+    renderLibrary(results);
+  } catch (err) {
+    console.error("Search failed:", err);
+    statusEl.textContent = "Search failed. Try again.";
+  }
+}
+
+function clearSearch() {
+  const statusEl = document.getElementById("search-status");
+  statusEl.classList.add("hidden");
+  statusEl.textContent = "";
+  renderLibrary(allBooks);
 }
 
 // --- Add Book Modal ---
@@ -207,7 +362,7 @@ async function addBook(title, description) {
 
   // Add to local book list
   allBooks.push({ id: data.id, title, description });
-  renderLibrary();
+  renderLibrary(allBooks);
 }
 
 function hideAddModal() {
@@ -255,7 +410,7 @@ function renderTaste() {
     btn.addEventListener("click", () => {
       likedBooks.delete(parseInt(btn.dataset.id));
       saveRatings();
-      renderLibrary();
+      renderLibrary(allBooks);
       renderTaste();
     });
   });
@@ -360,8 +515,10 @@ function setupRecommendations() {
     results.innerHTML = "";
 
     try {
+      // Fetch taste vector first for comparison
+      const tasteVector = await fetchTasteVectorForRecs();
       const recs = await fetchRecommendations();
-      renderRecommendations(recs);
+      renderRecommendations(recs, tasteVector);
     } catch (err) {
       console.error("Failed to get recommendations:", err);
       results.innerHTML =
@@ -387,7 +544,47 @@ function updateRecState() {
   }
 }
 
-function renderRecommendations(recs) {
+async function fetchTasteVectorForRecs() {
+  if (likedBooks.size === 0) return null;
+  const likedArr = [...likedBooks].map((id) => ({ book_id: id, rating: 5 }));
+  try {
+    const res = await fetch("/taste", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ liked_books: likedArr }),
+    });
+    if (res.ok) {
+      const data = await res.json();
+      return data.taste_vector;
+    }
+  } catch (_) {}
+  return null;
+}
+
+function computeFeatureExplanation(bookFeatures, tasteVector) {
+  if (!bookFeatures || !tasteVector) return [];
+  const explanations = [];
+  for (let i = 0; i < DIMENSIONS.length; i++) {
+    const dim = DIMENSIONS[i];
+    const userVal = tasteVector[i];
+    const bookVal = bookFeatures[dim];
+    if (userVal == null || bookVal == null) continue;
+    // Only highlight dimensions where both user and book are notably aligned (>= 0.55)
+    // or notably low together (<= 0.35)
+    const match = userVal >= 0.55 && bookVal >= 0.55
+               || userVal <= 0.35 && bookVal <= 0.35;
+    if (match) {
+      const label = DIM_LABELS[dim] || dim;
+      const direction = userVal >= 0.55 ? "high" : "low";
+      explanations.push({ dim: label, direction, userVal, bookVal, strength: Math.abs(userVal - bookVal) });
+    }
+  }
+  // Sort by closest match (smallest difference = strongest alignment)
+  explanations.sort((a, b) => a.strength - b.strength);
+  return explanations.slice(0, 4); // top 4 matches
+}
+
+function renderRecommendations(recs, tasteVector) {
   const results = document.getElementById("rec-results");
   const empty = document.getElementById("rec-empty");
   const chartSection = document.getElementById("rec-chart-section");
@@ -403,20 +600,37 @@ function renderRecommendations(recs) {
   const maxScore = Math.max(...recs.map((r) => r.score));
 
   results.innerHTML = recs
-    .map(
-      (rec, i) => `
+    .map((rec, i) => {
+      const explanations = computeFeatureExplanation(rec.features, tasteVector);
+      const explanationHTML = explanations.length > 0
+        ? `<div class="rec-explanation">
+             <span class="rec-explanation-label">Matches your taste in:</span>
+             ${explanations.map(e =>
+               `<span class="rec-tag ${e.direction}">${e.dim}</span>`
+             ).join("")}
+           </div>`
+        : "";
+
+      const book = allBooks.find(b => b.id === rec.book_id);
+      const genreBadge = book && book.genre
+        ? `<span class="rec-genre-badge" style="background:${GENRE_META[book.genre]?.color || '#6e6e73'}20;color:${GENRE_META[book.genre]?.color || '#6e6e73'}">${escapeHtml(book.genre)}</span>`
+        : "";
+
+      return `
       <div class="rec-card">
         <div class="rec-rank">${i + 1}</div>
         <div class="rec-info">
           <div class="rec-title">${escapeHtml(rec.title)}</div>
+          ${genreBadge}
           <div class="rec-bar-wrap">
             <div class="rec-bar" style="width: ${(rec.score / maxScore) * 100}%"></div>
           </div>
+          ${explanationHTML}
         </div>
         <div class="rec-score">${Math.round(rec.score * 100)}%</div>
       </div>
-    `
-    )
+    `;
+    })
     .join("");
 
   // Render bar chart

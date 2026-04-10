@@ -33,8 +33,15 @@
           <h2>Library</h2>
           <p>Click books you like. The more you select, the better the recommendations.</p>
         </div>
-        <button id="btn-add-book" class="btn-primary">+ Add Book</button>
+        <div class="library-actions">
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="book-search" placeholder="Search books by title or description..." autocomplete="off">
+          </div>
+          <button id="btn-add-book" class="btn-primary">+ Add Book</button>
+        </div>
       </div>
+      <div id="search-status" class="search-status hidden"></div>
       <div id="library-grid" class="book-grid"></div>
     </section>
 
@@ -42,7 +49,7 @@
     <section id="tab-taste" class="tab">
       <div class="tab-header">
         <h2>Your Taste Profile</h2>
-        <p>Your reading preferences visualized across 8 literary dimensions.</p>
+        <p>Your reading preferences visualized across 13 literary dimensions.</p>
       </div>
       <div class="taste-layout">
         <div class="taste-chart">
@@ -114,6 +121,41 @@
               <h4>Action</h4>
             </div>
             <p class="dim-desc">How dynamic and event-driven. <strong>Low</strong> = introspective, calm. <strong>High</strong> = explosive, physical.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">🌍</span>
+              <h4>Worldbuilding</h4>
+            </div>
+            <p class="dim-desc">How rich and detailed the fictional world is. <strong>Low</strong> = real-world, minimal setting focus. <strong>High</strong> = elaborate lore, immersive universe.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">🏁</span>
+              <h4>Ending Satisfaction</h4>
+            </div>
+            <p class="dim-desc">How satisfying and conclusive the ending is. <strong>Low</strong> = open, ambiguous, tragic. <strong>High</strong> = neat resolution, feels complete.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">🩸</span>
+              <h4>Darkness / Violence</h4>
+            </div>
+            <p class="dim-desc">How dark, violent, or disturbing the content is. <strong>Low</strong> = cozy, wholesome. <strong>High</strong> = grim, graphic, disturbing.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">❤️</span>
+              <h4>Romance Presence</h4>
+            </div>
+            <p class="dim-desc">How central romantic relationships are. <strong>Low</strong> = no romance subplot. <strong>High</strong> = romance-driven narrative.</p>
+          </div>
+          <div class="dimension-card">
+            <div class="dim-header">
+              <span class="dim-icon">🔎</span>
+              <h4>Mystery / Puzzle</h4>
+            </div>
+            <p class="dim-desc">How much the plot revolves around solving a mystery. <strong>Low</strong> = straightforward narrative. <strong>High</strong> = clues, detective work, twists.</p>
           </div>
         </div>
       </div>

@@ -5,7 +5,11 @@
 
 # Project files
 plan.md
-data/seeds.json
+data/
+build_seeds.py
+collect_data.py
+Prominent-Book-Genres.md
+scraper.py
 
 # Database
 data/books.db
@@ -15,3 +19,4 @@ __pycache__/
 *.pyc
 *.pyo
 .env
+
